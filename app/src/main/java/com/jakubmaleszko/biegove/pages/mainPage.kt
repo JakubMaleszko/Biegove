@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -30,6 +31,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.jakubmaleszko.biegove.R
@@ -56,11 +58,12 @@ fun MainPage(onNavigateToTable: () -> Unit) {
             timestamp = timestamp
         )
         dao.insert(entity)
+        number = ""
         snackbarHostState.showSnackbar("Added entry")
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().imePadding(),
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
         },
@@ -93,7 +96,7 @@ fun MainPage(onNavigateToTable: () -> Unit) {
                     number = input.filter { it.isDigit() }
                 },
                 label = { Text("ID") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number,imeAction = ImeAction.Done),
                 modifier = Modifier.focusRequester(focusRequester),
                 keyboardActions = KeyboardActions(onDone = {
                     scope.launch {
