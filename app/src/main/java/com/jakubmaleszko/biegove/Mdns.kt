@@ -24,42 +24,44 @@ class MdnsHelper(private val context: Context) {
         val isConnected = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
 
         if(isConnected){
-        Thread {
+            Thread {
 
-            val wifi = context.applicationContext
-                .getSystemService(Context.WIFI_SERVICE) as WifiManager
-            val lock = wifi.createMulticastLock("mdnsLock")
-            lock.setReferenceCounted(true)
-            lock.acquire()
+                val wifi = context.applicationContext
+                    .getSystemService(Context.WIFI_SERVICE) as WifiManager
+                val lock = wifi.createMulticastLock("mdnsLock")
+                lock.setReferenceCounted(true)
+                lock.acquire()
 
-            val ip = wifi.connectionInfo.ipAddress
-            val addr = InetAddress.getByAddress(
-                byteArrayOf(
-                    (ip and 0xff).toByte(),
-                    (ip shr 8 and 0xff).toByte(),
-                    (ip shr 16 and 0xff).toByte(),
-                    (ip shr 24 and 0xff).toByte()
+                val ip = wifi.connectionInfo.ipAddress
+                val addr = InetAddress.getByAddress(
+                    byteArrayOf(
+                        (ip and 0xff).toByte(),
+                        (ip shr 8 and 0xff).toByte(),
+                        (ip shr 16 and 0xff).toByte(),
+                        (ip shr 24 and 0xff).toByte()
+                    )
                 )
-            )
 
-            val jmdns = JmDNS.create(addr)
+                val jmdns = JmDNS.create(addr)
 
-            jmdns.addServiceListener("_http._tcp.local.", object : ServiceListener {
+                jmdns.addServiceListener("_biegove._tcp.local.", object : ServiceListener {
 
-                override fun serviceAdded(event: ServiceEvent) {
-                    jmdns.requestServiceInfo(event.type, event.name, 1)
-                }
+                    override fun serviceAdded(event: ServiceEvent) {
+                        jmdns.requestServiceInfo(event.type, event.name, 1)
+                    }
 
-                override fun serviceRemoved(event: ServiceEvent) {}
+                    override fun serviceRemoved(event: ServiceEvent) {}
 
-                override fun serviceResolved(event: ServiceEvent) {
-                    val host = event.info.hostAddresses.firstOrNull() ?: return
-                    val port = event.info.port
-                    val name = event.name
-                    onDeviceFound(Device(name, "$host:$port"))
-                }
-            })
-        }.start()
+                    override fun serviceResolved(event: ServiceEvent) {
+                        val host = event.info.hostAddresses
+                            .firstOrNull { it.matches(Regex("^\\d+\\.\\d+\\.\\d+\\.\\d+$")) }
+                            ?: return
+                        val port = event.info.port
+                        val name = event.name
+                        onDeviceFound(Device(name, "$host:$port"))
+                    }
+                })
+            }.start()
         }
     }
 }

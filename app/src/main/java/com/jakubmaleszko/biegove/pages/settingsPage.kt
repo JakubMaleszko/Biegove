@@ -1,29 +1,37 @@
 package com.jakubmaleszko.biegove.pages
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
+import com.jakubmaleszko.biegove.ConnectionManager
 import com.jakubmaleszko.biegove.Device
 import com.jakubmaleszko.biegove.MdnsHelper
 import com.jakubmaleszko.biegove.R
+import com.jakubmaleszko.biegove.db.AppDatabase
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsPage(onBack: () -> Unit) {
     val context = LocalContext.current
+    val db = AppDatabase.getInstance(context)
+    val dao = db.timestampDao()
+    val scope = rememberCoroutineScope()
     val devices = remember { mutableStateListOf<Device>() }
+    val isConnected by ConnectionManager.isConnected.collectAsState()
+    val connectedDevice by ConnectionManager.connectedDevice.collectAsState()
+    var showClearDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         val mdns = MdnsHelper(context)
@@ -35,6 +43,7 @@ fun SettingsPage(onBack: () -> Unit) {
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
@@ -52,7 +61,42 @@ fun SettingsPage(onBack: () -> Unit) {
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
         ) {
-            // Section: Devices
+            item { SectionHeader("Connection") }
+
+            if (isConnected && connectedDevice != null) {
+                item {
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        tonalElevation = 1.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(connectedDevice!!.name, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    connectedDevice!!.address,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            OutlinedButton(onClick = { ConnectionManager.disconnect() }) {
+                                Text("Disconnect")
+                            }
+                        }
+                    }
+                }
+            }
+
             item { SectionHeader("Nearby Devices") }
 
             if (devices.isEmpty()) {
@@ -66,11 +110,25 @@ fun SettingsPage(onBack: () -> Unit) {
                 }
             } else {
                 items(devices) { device ->
-                    DeviceListItem(device = device)
+                    val isCurrent = connectedDevice?.address == device.address
+                    DeviceListItem(
+                        device = device,
+                        isConnected = isCurrent,
+                        onConnect = {
+                            scope.launch {
+                                val ok = ConnectionManager.connect(device)
+                                if (ok) {
+                                    val entries = dao.getAll()
+                                    ConnectionManager.syncData(entries.map { it.number to it.timestamp })
+                                } else {
+                                    snackbarHostState.showSnackbar("Connection failed — check if desktop is running")
+                                }
+                            }
+                        }
+                    )
                 }
             }
 
-            // Section: Data Management
             item { SectionHeader("Data & Storage") }
 
             item {
@@ -79,8 +137,7 @@ fun SettingsPage(onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier
-                            .padding(16.dp),
+                        modifier = Modifier.padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -93,7 +150,7 @@ fun SettingsPage(onBack: () -> Unit) {
                             )
                         }
                         TextButton(
-                            onClick = { /* Handle Clear */ },
+                            onClick = { showClearDialog = true },
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
                             Text("Clear")
@@ -103,33 +160,69 @@ fun SettingsPage(onBack: () -> Unit) {
             }
         }
     }
+
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text("Clear all data") },
+            text = { Text("Are you sure you want to delete all entries? This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            dao.deleteAll()
+                            ConnectionManager.syncData(emptyList())
+                            showClearDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Clear")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
 fun SectionHeader(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelLarge, // Smaller, uppercase-style feel
+        style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 8.dp, top = 16.dp)
+        modifier = Modifier.padding(start = 8.dp, top = 24.dp, bottom = 8.dp)
     )
 }
 
 @Composable
-fun DeviceListItem(device: Device) {
+fun DeviceListItem(device: Device, isConnected: Boolean, onConnect: () -> Unit) {
     ListItem(
         headlineContent = { Text(device.name) },
         supportingContent = { Text(device.address) },
         leadingContent = {
             Icon(
-                painter = painterResource(R.drawable.calendar_today),
+                painter = painterResource(R.drawable.settings),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
+                tint = if (isConnected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         trailingContent = {
-            FilledTonalButton(onClick = { /* Connect */ }) {
-                Text("Connect")
+            if (isConnected) {
+                Text(
+                    "Connected",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelMedium
+                )
+            } else {
+                FilledTonalButton(onClick = onConnect) {
+                    Text("Connect")
+                }
             }
         },
         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)

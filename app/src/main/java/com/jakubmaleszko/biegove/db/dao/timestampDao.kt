@@ -22,4 +22,7 @@ interface TimestampDao {
 
     @Delete
     suspend fun delete(timestamp: Timestamp)
+
+    @Query("DELETE FROM Timestamp")
+    suspend fun deleteAll()
 }
