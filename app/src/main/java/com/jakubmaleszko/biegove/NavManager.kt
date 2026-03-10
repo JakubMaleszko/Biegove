@@ -4,6 +4,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.jakubmaleszko.biegove.pages.MainPage
+import com.jakubmaleszko.biegove.pages.SettingsPage
 import com.jakubmaleszko.biegove.pages.TablePage
 import kotlinx.serialization.Serializable
 
@@ -14,6 +15,9 @@ sealed interface Screen {
 
     @Serializable
     data object  Table : Screen
+
+    @Serializable
+    data object  Settings : Screen
 }
 
 @Composable
@@ -26,10 +30,14 @@ fun NavManager() {
     ) {
         // Define the Main Screen
         composable<Screen.Main> {
-            MainPage(onNavigateToTable = {navController.navigate(Screen.Table)})
+            MainPage(onNavigateToTable = {navController.navigate(Screen.Table)},
+                onNavigateToSettings = {navController.navigate(Screen.Settings)})
         }
         composable<Screen.Table> {
             TablePage(onBack = {navController.popBackStack()})
+        }
+        composable<Screen.Settings> {
+            SettingsPage(onBack = {navController.popBackStack()})
         }
     }
 }

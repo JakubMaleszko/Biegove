@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainPage(onNavigateToTable: () -> Unit) {
+fun MainPage(onNavigateToTable: () -> Unit, onNavigateToSettings: () -> Unit) {
     val db = AppDatabase.getInstance(LocalContext.current)
     val dao = db.timestampDao()
     var number by remember { mutableStateOf("") }
@@ -75,7 +75,7 @@ fun MainPage(onNavigateToTable: () -> Unit) {
                         contentDescription = "Table view"
                     )
                 }
-                IconButton(onClick = {}) {
+                IconButton(onClick = onNavigateToSettings) {
                     Icon(
                         painter = painterResource(R.drawable.settings),
                         contentDescription = "Settings page"
