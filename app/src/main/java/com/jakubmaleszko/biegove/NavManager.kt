@@ -3,7 +3,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.jakubmaleszko.biegove.pages.MainPage
+import com.jakubmaleszko.biegove.pages.mainPage.MainPage
 import com.jakubmaleszko.biegove.pages.SettingsPage
 import com.jakubmaleszko.biegove.pages.TablePage
 import kotlinx.serialization.Serializable

@@ -1,4 +1,4 @@
-package com.jakubmaleszko.biegove.pages
+package com.jakubmaleszko.biegove.pages.mainPage
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -42,25 +42,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainPage(onNavigateToTable: () -> Unit, onNavigateToSettings: () -> Unit) {
-    val db = AppDatabase.getInstance(LocalContext.current)
-    val dao = db.timestampDao()
-    var number by remember { mutableStateOf("") }
-    val focusRequester = remember { FocusRequester() }
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
-    suspend fun saveTimestamp() {
-        val num = number.toIntOrNull() ?: return
-        val timestamp = System.currentTimeMillis()
-        val entity = Timestamp(
-            uid = 0,
-            number = num,
-            timestamp = timestamp
-        )
-        dao.insert(entity)
-        number = ""
-        snackbarHostState.showSnackbar("Added entry")
-    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize().imePadding(),
@@ -84,36 +66,7 @@ fun MainPage(onNavigateToTable: () -> Unit, onNavigateToSettings: () -> Unit) {
             })
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier.padding(innerPadding).fillMaxWidth()  ,
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-
-        ) {
-            OutlinedTextField(
-                value = number,
-                onValueChange = { input ->
-                    number = input.filter { it.isDigit() }
-                },
-                label = { Text("ID") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number,imeAction = ImeAction.Done),
-                modifier = Modifier.focusRequester(focusRequester),
-                keyboardActions = KeyboardActions(onDone = {
-                    scope.launch {
-                        saveTimestamp()
-                    }
-                })
-            )
-            Button(onClick = {
-                scope.launch {
-                    saveTimestamp()
-                }
-            }) {
-                Text("Add")
-            }
-        }
-    }
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+//        KbMainPage(innerPadding, snackbarHostState)
+        DrMainPage(innerPadding, snackbarHostState)
     }
 }
