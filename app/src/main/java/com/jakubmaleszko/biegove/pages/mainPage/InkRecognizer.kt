@@ -1,6 +1,5 @@
 package com.jakubmaleszko.biegove.pages.mainPage
 
-import android.content.Context
 import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.common.model.RemoteModelManager
 import com.google.mlkit.vision.digitalink.recognition.DigitalInkRecognition
@@ -10,7 +9,7 @@ import com.google.mlkit.vision.digitalink.recognition.DigitalInkRecognizer
 import com.google.mlkit.vision.digitalink.recognition.DigitalInkRecognizerOptions
 import com.google.mlkit.vision.digitalink.recognition.Ink
 
-class InkRecognizer(context: Context) {
+class InkRecognizer() {
     private var recognizer: DigitalInkRecognizer? = null
     private val model: DigitalInkRecognitionModel
 
@@ -35,17 +34,30 @@ class InkRecognizer(context: Context) {
     fun recognize(ink: Ink, onResult: (String) -> Unit) {
         val client = recognizer
         if (client == null) {
-            onResult("") // Model not downloaded yet
+            onResult("")
             return
         }
 
         client.recognize(ink)
             .addOnSuccessListener { result ->
-                // Get the best candidate
-                val candidate = result.candidates.firstOrNull()?.text ?: ""
+                // 1. Get the best candidate text
+                val rawText = result.candidates.firstOrNull()?.text ?: ""
 
-                // Clean the output: Keep only digits
-                val digitsOnly = candidate.filter { it.isDigit() }
+                // 2. Map visual lookalikes to digits
+                val correctedText = rawText.map { char ->
+                    when (char.uppercaseChar()) {
+                        'O', 'D', 'Q' -> '0'
+                        'I', 'L', 'J' -> '1'
+                        'Z'           -> '2'
+                        'E'           -> '3'
+                        'S'           -> '5'
+                        'G'           -> '6'
+                        'B'           -> '8'
+                        else          -> char
+                    }
+                }.joinToString("")
+
+                val digitsOnly = correctedText.filter { it.isDigit() }
 
                 onResult(digitsOnly)
             }
