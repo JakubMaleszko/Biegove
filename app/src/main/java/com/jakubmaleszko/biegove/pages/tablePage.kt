@@ -119,7 +119,7 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                                                 )
 
                                                 if (result == SnackbarResult.ActionPerformed) {
-                                                    viewModel.addTimestamp(item.number)
+                                                    viewModel.insertTimestamp(item)
                                                 }
                                             }
                                         },

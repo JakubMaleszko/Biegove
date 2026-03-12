@@ -1,9 +1,7 @@
 package com.jakubmaleszko.biegove.pages.mainPage
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.SnackbarHostState
@@ -20,104 +18,113 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.mlkit.vision.digitalink.recognition.Ink
 import com.jakubmaleszko.biegove.BiegoveViewModel
-import kotlinx.coroutines.launch
 
 
 @Composable
 fun DrMainPage(
-    innerPadding: PaddingValues,
-    snackbarHostState: SnackbarHostState,
     viewModel: BiegoveViewModel
 ) {
     val context = LocalContext.current
-    var number by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
+
+    // Drawing State
+    var motionTick by remember { mutableIntStateOf(0) }
     val strokes = remember { mutableStateListOf<Ink.Stroke>() }
-    var currentStroke by remember { mutableStateOf(Ink.Stroke.builder()) }
+    var currentStrokeBuilder by remember { mutableStateOf<Ink.Stroke.Builder>(Ink.Stroke.builder()) }
+    val drawPath = remember { androidx.compose.ui.graphics.Path() }
+    val onSurface = MaterialTheme.colorScheme.onSurface
+
     val recognizer = remember { InkRecognizer(context) }
 
-    suspend fun saveTimestamp() {
-        val num = number.toIntOrNull() ?: return
-        viewModel.addTimestamp(num)
-        snackbarHostState.showSnackbar("Added entry with number: $num")
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(innerPadding),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Canvas(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp)
-                .background(Color.White)
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragStart = { offset ->
-                            currentStroke = Ink.Stroke.builder()
-                            currentStroke.addPoint(
-                                Ink.Point.create(offset.x, offset.y, System.currentTimeMillis())
-                            )
+                            currentStrokeBuilder = Ink.Stroke.builder()
+                            currentStrokeBuilder.addPoint(Ink.Point.create(offset.x, offset.y))
+                            drawPath.moveTo(offset.x, offset.y)
                         },
                         onDrag = { change, _ ->
                             val p = change.position
-                            currentStroke.addPoint(
-                                Ink.Point.create(p.x, p.y, System.currentTimeMillis())
-                            )
+                            currentStrokeBuilder.addPoint(Ink.Point.create(p.x, p.y))
+                            drawPath.lineTo(p.x, p.y)
+                            motionTick++
                         },
-                        onDragEnd = {
-                            strokes.add(currentStroke.build())
-                        }
+                        onDragEnd = { strokes.add(currentStrokeBuilder.build()) }
                     )
                 }
         ) {
-            strokes.forEach { stroke ->
-                val points = stroke.points
-                for (i in 1 until points.size) {
-                    drawLine(
-                        Color.Black,
-                        start = Offset(points[i - 1].x, points[i - 1].y),
-                        end = Offset(points[i].x, points[i].y),
-                        strokeWidth = 8f
+            motionTick.let {
+                drawPath(
+                    path = drawPath,
+                    color = onSurface,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        width = 12f,
+                        cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                        join = androidx.compose.ui.graphics.StrokeJoin.Round
                     )
-                }
+                )
             }
         }
 
-        // Recognize button
-        Button(onClick = {
-            val inkBuilder = Ink.builder()
-            strokes.forEach { inkBuilder.addStroke(it) }
-
-            recognizer.recognize(inkBuilder.build()) { digits ->
-                if (digits.isNotEmpty()) {
-                    number = digits
-                    scope.launch { saveTimestamp() }
+        // --- BUTTONS ONLY ---
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 48.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            OutlinedButton(
+                onClick = {
                     strokes.clear()
-                } else {
-                    android.util.Log.d("DrMainPage", "No digits recognized yet")
-                    // keep strokes so user can try again
-                }
+                    drawPath.reset()
+                    motionTick++
+                },
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Clear")
             }
 
-        }) {
-            Text("Recognize")
-        }
+            Button(
+                onClick = {
+                    if (strokes.isEmpty()) return@Button
+                    val inkBuilder = Ink.builder()
+                    strokes.forEach { inkBuilder.addStroke(it) }
 
-        // Optional: show recognized number
-        if (number.isNotEmpty()) {
-            Text("Recognized number: $number")
+                    recognizer.recognize(inkBuilder.build()) { digits ->
+                        val msg = if (digits.isNotEmpty()) {
+                            viewModel.addTimestamp(digits.toInt())
+                            "Added $digits"
+                        } else {
+                            "Not recognized"
+                        }
+
+                        // Native Android Info Box (Toast)
+                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+
+                        strokes.clear()
+                        drawPath.reset()
+                        motionTick++
+                    }
+                }
+            ) {
+                Text("Proceed")
+            }
         }
     }
 }

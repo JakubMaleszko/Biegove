@@ -20,12 +20,10 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
     val settingsState: StateFlow<Settings?> = settingsDao.observeSettings()
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.Eagerly, // Change this from WhileSubscribed
-            initialValue = Settings(useDraw = false) // Give it a real default object
+            started = SharingStarted.Eagerly,
+            initialValue = Settings(useDraw = false)
         )
 
-    // TIMESTAMPS FLOW (Updates UI automatically on any change)
-    // Make sure your DAO has: fun observeAll(): Flow<List<Timestamp>>
     val allTimestamps: StateFlow<List<Timestamp>> = timestampDao.observeTimestamp()
         .stateIn(
             scope = viewModelScope,
@@ -38,7 +36,12 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val newEntry = Timestamp(number = number, timestamp = System.currentTimeMillis())
             timestampDao.insert(newEntry)
-            // If you use the Flow (observeAll), the UI updates automatically here!
+        }
+    }
+
+    fun insertTimestamp(timestamp: Timestamp) {
+        viewModelScope.launch {
+            timestampDao.insert(timestamp)
         }
     }
 

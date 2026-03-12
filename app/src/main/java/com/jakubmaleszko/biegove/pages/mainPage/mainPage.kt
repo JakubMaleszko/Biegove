@@ -53,7 +53,7 @@ fun MainPage(
         }
     ) { innerPadding ->
         if (useDraw) {
-            DrMainPage(innerPadding, snackbarHostState, viewModel)
+            DrMainPage(viewModel)
         } else {
             KbMainPage(innerPadding, snackbarHostState, viewModel)
         }
