@@ -4,6 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jakubmaleszko.biegove.ui.theme.BiegoveTheme
 
 class MainActivity : ComponentActivity() {
@@ -13,8 +17,15 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            BiegoveTheme {
-                    NavManager()
+            val viewModel: BiegoveViewModel = viewModel()
+            val settings by viewModel.settingsState.collectAsState()
+            val darkTheme = when (settings?.themeMode) {
+                1 -> false // Light
+                2 -> true  // Dark
+                else -> isSystemInDarkTheme() // System (0 or null)
+            }
+            BiegoveTheme(darkTheme) {
+                    NavManager(viewModel)
             }
         }
     }

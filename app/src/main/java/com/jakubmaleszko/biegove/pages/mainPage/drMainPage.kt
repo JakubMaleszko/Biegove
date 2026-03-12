@@ -27,16 +27,17 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.mlkit.vision.digitalink.recognition.Ink
-import com.jakubmaleszko.biegove.db.AppDatabase
-import com.jakubmaleszko.biegove.db.entities.Timestamp
+import com.jakubmaleszko.biegove.BiegoveViewModel
 import kotlinx.coroutines.launch
 
 
 @Composable
-fun DrMainPage(innerPadding: PaddingValues, snackbarHostState: SnackbarHostState) {
+fun DrMainPage(
+    innerPadding: PaddingValues,
+    snackbarHostState: SnackbarHostState,
+    viewModel: BiegoveViewModel
+) {
     val context = LocalContext.current
-    val db = AppDatabase.getInstance(context)
-    val dao = db.timestampDao()
     var number by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val strokes = remember { mutableStateListOf<Ink.Stroke>() }
@@ -45,15 +46,8 @@ fun DrMainPage(innerPadding: PaddingValues, snackbarHostState: SnackbarHostState
 
     suspend fun saveTimestamp() {
         val num = number.toIntOrNull() ?: return
-        val timestamp = System.currentTimeMillis()
-        val entity = Timestamp(
-            uid = 0,
-            number = num,
-            timestamp = timestamp
-        )
-        dao.insert(entity)
-        number = ""
-        snackbarHostState.showSnackbar("Added entry")
+        viewModel.addTimestamp(num)
+        snackbarHostState.showSnackbar("Added entry with number: $num")
     }
 
     Column(

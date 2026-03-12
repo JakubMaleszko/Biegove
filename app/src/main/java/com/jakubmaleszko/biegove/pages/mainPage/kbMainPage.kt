@@ -21,33 +21,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.jakubmaleszko.biegove.db.AppDatabase
-import com.jakubmaleszko.biegove.db.entities.Timestamp
+import com.jakubmaleszko.biegove.BiegoveViewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun KbMainPage(innerPadding: PaddingValues, snackbarHostState: SnackbarHostState) {
-    val db = AppDatabase.getInstance(LocalContext.current)
-    val dao = db.timestampDao()
+fun KbMainPage(
+    innerPadding: PaddingValues,
+    snackbarHostState: SnackbarHostState,
+    viewModel: BiegoveViewModel
+) {
     var number by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
 
     suspend fun saveTimestamp() {
         val num = number.toIntOrNull() ?: return
-        val timestamp = System.currentTimeMillis()
-        val entity = Timestamp(
-            uid = 0,
-            number = num,
-            timestamp = timestamp
-        )
-        dao.insert(entity)
         number = ""
-        snackbarHostState.showSnackbar("Added entry")
+        viewModel.addTimestamp(num)
+        snackbarHostState.showSnackbar("Added entry with number: $num")
     }
 
     Column(

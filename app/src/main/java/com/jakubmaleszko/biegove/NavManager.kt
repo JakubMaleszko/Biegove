@@ -21,7 +21,7 @@ sealed interface Screen {
 }
 
 @Composable
-fun NavManager() {
+fun NavManager(viewModel: BiegoveViewModel) {
     val navController = rememberNavController()
 
     NavHost(
@@ -31,13 +31,14 @@ fun NavManager() {
         // Define the Main Screen
         composable<Screen.Main> {
             MainPage(onNavigateToTable = {navController.navigate(Screen.Table)},
-                onNavigateToSettings = {navController.navigate(Screen.Settings)})
+                onNavigateToSettings = {navController.navigate(Screen.Settings)},
+                viewModel)
         }
         composable<Screen.Table> {
-            TablePage(onBack = {navController.popBackStack()})
+            TablePage(onBack = {navController.popBackStack()}, viewModel)
         }
         composable<Screen.Settings> {
-            SettingsPage(onBack = {navController.popBackStack()})
+            SettingsPage(onBack = {navController.popBackStack()}, viewModel)
         }
     }
 }

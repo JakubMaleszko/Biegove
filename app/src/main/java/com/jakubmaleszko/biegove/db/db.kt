@@ -4,12 +4,15 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.jakubmaleszko.biegove.db.dao.SettingsDao
 import com.jakubmaleszko.biegove.db.dao.TimestampDao
 import com.jakubmaleszko.biegove.db.entities.Timestamp
+import com.jakubmaleszko.biegove.db.entities.Settings
 
-@Database(entities = [Timestamp::class], version = 1)
+@Database(entities = [Timestamp::class, Settings::class], version = 1)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun timestampDao(): TimestampDao
+    abstract fun settingsDao(): SettingsDao
 
     companion object {
         @Volatile
