@@ -36,11 +36,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.jakubmaleszko.biegove.BiegoveViewModel
 import com.jakubmaleszko.biegove.R
-import com.jakubmaleszko.biegove.db.entities.Race
 import kotlinx.coroutines.launch
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 fun formatDuration(seconds: Int): String {
     val mins = seconds / 60

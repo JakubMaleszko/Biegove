@@ -77,7 +77,10 @@ fun MainPage(
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            if (selectedRace == null) {
+            if (settings == null) {
+
+            }
+            else if (selectedRace == null) {
                 // Display this when no race is active
                 androidx.compose.foundation.layout.Column(
                     modifier = Modifier.align(androidx.compose.ui.Alignment.Center),

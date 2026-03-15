@@ -2,6 +2,7 @@ package com.jakubmaleszko.biegove
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -19,14 +20,24 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: BiegoveViewModel = viewModel()
             val settings by viewModel.settingsState.collectAsState()
-            val darkTheme = when (settings?.themeMode) {
-                1 -> false // Light
-                2 -> true  // Dark
-                else -> isSystemInDarkTheme() // System (0 or null)
-            }
-            BiegoveTheme(darkTheme) {
+                val darkTheme = when (settings?.themeMode) {
+                    1 -> false // Light
+                    2 -> true  // Dark
+                    else -> isSystemInDarkTheme() // System (0 or null)
+                }
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Color.TRANSPARENT,
+                    ) { darkTheme },
+                    navigationBarStyle = SystemBarStyle.auto(
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Color.TRANSPARENT,
+                    ) { darkTheme }
+                )
+                BiegoveTheme(darkTheme) {
                     NavManager(viewModel)
-            }
+                }
         }
     }
 }

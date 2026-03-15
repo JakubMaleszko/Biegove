@@ -67,16 +67,18 @@ object ConnectionManager {
         }
     }
 
-    fun syncData(entries: List<Pair<Int, Long>>) {
+    fun syncData(startTime: Long, entries: List<Pair<Int, Int>>) {
         val device = _connectedDevice.value ?: return
         scope.launch {
             try {
                 val json = JSONObject()
+                json.put("startTime", startTime)
+
                 val arr = JSONArray()
-                entries.forEach { (number, timestamp) ->
+                entries.forEach { (number, elapsedSeconds) ->
                     val obj = JSONObject()
                     obj.put("number", number)
-                    obj.put("timestamp", timestamp)
+                    obj.put("elapsed", elapsedSeconds)
                     arr.put(obj)
                 }
                 json.put("entries", arr)

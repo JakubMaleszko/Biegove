@@ -19,18 +19,17 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
     private val db = AppDatabase.getInstance(application)
     private val settingsDao = db.settingsDao()
     private val raceDao = db.raceDao()
-    private val timestampDao = db.timestampDao() // Re-added this
-
+    private val timestampDao = db.timestampDao()
     // 1. SETTINGS & SELECTION
     val settingsState: StateFlow<Settings?> = settingsDao.observeSettings()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, Settings())
+        .map { it ?: Settings() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val selectedRaceObject: StateFlow<Race?> = settingsState
         .map { settings -> settings?.selectedRace?.let { raceDao.getById(it) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     // 2. TIMESTAMPS FOR THE ACTIVE RACE
-    // This flow automatically updates whenever the selectedRace changes
     @OptIn(ExperimentalCoroutinesApi::class)
     val currentRaceResults: StateFlow<List<Timestamp>> = settingsState
         .flatMapLatest { settings ->
@@ -55,20 +54,28 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // --- RESULT OPERATIONS ---
+    private fun triggerAutoSync() {
+        val race = selectedRaceObject.value ?: return
+        val results = currentRaceResults.value
+        if (ConnectionManager.isConnected.value) {
+            ConnectionManager.syncData(
+                race.startTime,
+                results.map { it.number to it.time }
+            )
+        }
+    }
     fun addResultToSelectedRace(runnerNumber: Int) {
         val currentRace = selectedRaceObject.value ?: return
-
         viewModelScope.launch {
             val now = System.currentTimeMillis()
-            // Calculate seconds since race start
             val elapsedSeconds = ((now - currentRace.startTime) / 1000).toInt()
-
             val newResult = Timestamp(
                 raceId = currentRace.uid,
                 number = runnerNumber,
                 time = elapsedSeconds
             )
             timestampDao.insert(newResult)
+            triggerAutoSync()
         }
     }
     fun insertResultToSelectedRace(timestamp: Timestamp) {

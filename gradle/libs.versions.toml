@@ -16,7 +16,6 @@ roomCompiler = "2.8.4"
 material3 = "1.4.0"
 runtime = "1.10.5"
 foundation = "1.10.5"
-uiGraphics = "1.10.5"
 foundationLayout = "1.10.5"
 
 [libraries]

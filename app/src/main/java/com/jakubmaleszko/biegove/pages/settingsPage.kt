@@ -73,10 +73,19 @@ fun SettingsPage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                         onConnect = {
                             scope.launch {
                                 if (ConnectionManager.connect(device)) {
-                                    val activeRaceId = settings?.selectedRace ?: -1
+                                    val activeRace = viewModel.selectedRaceObject.value
                                     val entries = viewModel.currentRaceResults.value
-                                    ConnectionManager.syncData(entries.map { it.number to it.time.toLong() })
-                                    snackbarHostState.showSnackbar("Connected and Synced")
+
+                                    if (activeRace != null) {
+                                        ConnectionManager.syncData(
+                                            startTime = activeRace.startTime,
+                                            entries = entries.map { it.number to it.time }
+                                        )
+                                        snackbarHostState.showSnackbar("Connected and Synced: ${activeRace.name}")
+                                    } else {
+                                        ConnectionManager.syncData(0L, emptyList())
+                                        snackbarHostState.showSnackbar("Connected (No active race to sync)")
+                                    }
                                 } else {
                                     snackbarHostState.showSnackbar("Connection failed")
                                 }
@@ -150,7 +159,7 @@ fun SettingsPage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                 TextButton(onClick = {
                     scope.launch {
                         viewModel.clearAllRaces()
-                        ConnectionManager.syncData(emptyList())
+                        ConnectionManager.syncData(0L,emptyList())
                         showClearDialog = false
                     }
                 }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Clear Everything") }
