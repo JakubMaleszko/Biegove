@@ -73,9 +73,13 @@ fun SettingsPage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                         onConnect = {
                             scope.launch {
                                 if (ConnectionManager.connect(device)) {
-                                    val entries = viewModel.getAllTimestamps()
-                                    ConnectionManager.syncData(entries.map { it.number to it.timestamp })
-                                } else snackbarHostState.showSnackbar("Connection failed")
+                                    val activeRaceId = settings?.selectedRace ?: -1
+                                    val entries = viewModel.currentRaceResults.value
+                                    ConnectionManager.syncData(entries.map { it.number to it.time.toLong() })
+                                    snackbarHostState.showSnackbar("Connected and Synced")
+                                } else {
+                                    snackbarHostState.showSnackbar("Connection failed")
+                                }
                             }
                         },
                         onDisconnect = { ConnectionManager.disconnect() }
@@ -141,11 +145,15 @@ fun SettingsPage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
             title = { Text("Clear all data") },
-            text = { Text("Are you sure? This cannot be undone.") },
+            text = { Text("This will delete all races and all runner results. Are you sure?") },
             confirmButton = {
                 TextButton(onClick = {
-                    scope.launch { viewModel.clearAllData(); ConnectionManager.syncData(emptyList()); showClearDialog = false }
-                }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Clear") }
+                    scope.launch {
+                        viewModel.clearAllRaces()
+                        ConnectionManager.syncData(emptyList())
+                        showClearDialog = false
+                    }
+                }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Clear Everything") }
             },
             dismissButton = { TextButton(onClick = { showClearDialog = false }) { Text("Cancel") } }
         )

@@ -36,15 +36,16 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.jakubmaleszko.biegove.BiegoveViewModel
 import com.jakubmaleszko.biegove.R
+import com.jakubmaleszko.biegove.db.entities.Race
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-fun formatUnixTimestamp(timestamp: Long): String {
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-        .withZone(ZoneId.systemDefault())
-    return formatter.format(Instant.ofEpochMilli(timestamp))
+fun formatDuration(seconds: Int): String {
+    val mins = seconds / 60
+    val secs = seconds % 60
+    return String.format("%02d:%02d", mins, secs)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,13 +54,22 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    val timestamps by viewModel.allTimestamps.collectAsState()
+    // 1. Observe the results for the ACTIVE race only
+    val results by viewModel.currentRaceResults.collectAsState()
+    val selectedRace by viewModel.selectedRaceObject.collectAsState()
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("History") },
+                title = {
+                    Column {
+                        Text("Race Results")
+                        selectedRace?.let {
+                            Text(it.name, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(painter = painterResource(R.drawable.arrow_back), contentDescription = "Back")
@@ -69,14 +79,17 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            if (timestamps.isEmpty()) {
-                Text("No entries found", modifier = Modifier.align(Alignment.Center))
+            if (results.isEmpty()) {
+                Text(
+                    text = if (selectedRace == null) "No race selected" else "No runners recorded yet",
+                    modifier = Modifier.align(Alignment.Center)
+                )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
                     items(
-                        items = timestamps,
-                        key = { it.uid } // Still keep the key for smooth list transitions
-                    ) { item ->
+                        items = results,
+                        key = { it.id } // Use the Timestamp ID
+                    ) { result ->
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -90,40 +103,38 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                                         .padding(vertical = 8.dp, horizontal = 16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Number Label
+                                    // Runner Number
                                     Text(
-                                        text = "#${item.number}",
+                                        text = "#${result.number}",
                                         style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.weight(0.3f)
                                     )
 
-                                    // Date/Time
+                                    // Formatted Duration (Time since race start)
                                     Text(
-                                        text = formatUnixTimestamp(item.timestamp),
+                                        text = formatDuration(result.time),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.weight(0.6f)
                                     )
 
-                                    // The Delete Button
+                                    // Delete Result
                                     IconButton(
                                         onClick = {
                                             scope.launch {
-                                                viewModel.removeTimestamp(item)
+                                                viewModel.removeTimestamp(result)
 
-                                                val result = snackbarHostState.showSnackbar(
-                                                    message = "Item #${item.number} deleted",
+                                                val snackResult = snackbarHostState.showSnackbar(
+                                                    message = "Runner #${result.number} removed",
                                                     actionLabel = "Undo",
                                                     duration = SnackbarDuration.Short
                                                 )
 
-                                                if (result == SnackbarResult.ActionPerformed) {
-                                                    viewModel.insertTimestamp(item)
+                                                if (snackResult == SnackbarResult.ActionPerformed) {
+                                                    viewModel.insertResultToSelectedRace(result)
                                                 }
                                             }
                                         },
-
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.delete),

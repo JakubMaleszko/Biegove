@@ -8,5 +8,6 @@ import androidx.room.PrimaryKey
 data class Settings(
     @PrimaryKey val uid: Int = 0,
     @ColumnInfo(name = "useDraw") val useDraw: Boolean = false,
-    @ColumnInfo(name = "themeMode") val themeMode: Int = 0 // 0: System, 1: Light, 2: Dark
+    @ColumnInfo(name = "themeMode") val themeMode: Int = 0, // 0: System, 1: Light, 2: Dark
+    @ColumnInfo(name = "selectedRace") val selectedRace: Int = -1
 )

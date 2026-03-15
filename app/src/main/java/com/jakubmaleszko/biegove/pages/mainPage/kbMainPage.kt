@@ -40,7 +40,7 @@ fun KbMainPage(
     suspend fun saveTimestamp() {
         val num = number.toIntOrNull() ?: return
         number = ""
-        viewModel.addTimestamp(num)
+        viewModel.addResultToSelectedRace(num)
         snackbarHostState.showSnackbar("Added entry with number: $num")
     }
 

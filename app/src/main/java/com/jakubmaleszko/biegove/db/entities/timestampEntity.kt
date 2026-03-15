@@ -6,8 +6,9 @@ import androidx.room.PrimaryKey
 
 
 @Entity
-data class Timestamp (
-    @PrimaryKey(autoGenerate = true) val uid: Int = 0,
-    @ColumnInfo(name="number") val number: Int,
-    @ColumnInfo(name="timestamp") val timestamp: Long
+data class Timestamp(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val raceId: Int, // This links the result to the Race
+    val number: Int,
+    val time: Int    // Calculated: (Now - Race StartTime)
 )

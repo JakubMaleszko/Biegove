@@ -21,4 +21,7 @@ interface SettingsDao {
 
     @Query("UPDATE Settings SET useDraw = :useDraw WHERE uid = 0")
     suspend fun updateUseDraw(useDraw: Boolean)
+
+    @Query("UPDATE Settings SET selectedRace = :selectedRace WHERE uid = 0")
+    suspend fun updateSelectedRace(selectedRace: Int)
 }

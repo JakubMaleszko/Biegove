@@ -105,7 +105,7 @@ fun DrMainPage(
 
                     recognizer.recognize(inkBuilder.build()) { digits ->
                         val msg = if (digits.isNotEmpty()) {
-                            viewModel.addTimestamp(digits.toInt())
+                            viewModel.addResultToSelectedRace(digits.toInt())
                             "Added $digits"
                         } else {
                             "Not recognized"
