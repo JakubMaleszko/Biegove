@@ -4,7 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity
+// Changed for mmkv reasons
 data class Settings(
     @PrimaryKey val uid: Int = 0,
     @ColumnInfo(name = "useDraw") val useDraw: Boolean = false,

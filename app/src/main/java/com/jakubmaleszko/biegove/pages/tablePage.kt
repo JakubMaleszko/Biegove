@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jakubmaleszko.biegove.BiegoveViewModel
 import com.jakubmaleszko.biegove.R
@@ -27,7 +28,6 @@ fun formatDuration(seconds: Int): String {
 @Composable
 fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     val results by viewModel.currentRaceResults.collectAsState()
     val selectedRace by viewModel.selectedRaceObject.collectAsState()
@@ -125,7 +125,8 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                 if (displayedResults.isEmpty()) {
                     Text(
                         text = if (results.isEmpty()) "No runners recorded yet" else "No matches found",
-                        modifier = Modifier.align(Alignment.Center)
+                        modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
+                        textAlign = TextAlign.Center
                     )
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxWidth()) {
@@ -133,7 +134,7 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                             items = displayedResults,
                             key = { it.id }
                         ) { result ->
-                            ResultItem(result, viewModel)
+                            ResultItem(result)
                         }
                     }
                 }
@@ -143,7 +144,7 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
 }
 
 @Composable
-fun ResultItem(result: Timestamp, viewModel: BiegoveViewModel) {
+fun ResultItem(result: Timestamp) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface

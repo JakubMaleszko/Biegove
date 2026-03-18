@@ -41,7 +41,7 @@ fun MainPage(
     val snackbarHostState = remember { SnackbarHostState() }
     val settings by viewModel.settingsState.collectAsState()
     val selectedRace by viewModel.selectedRaceObject.collectAsState()
-    val useDraw = settings?.useDraw ?: false
+    val useDraw = settings.useDraw ?: false
 
     // Sheet State
     var showSheet by remember { mutableStateOf(false) }
@@ -77,10 +77,7 @@ fun MainPage(
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            if (settings == null) {
-
-            }
-            else if (selectedRace == null) {
+             if (settings.selectedRace == -1) {
                 // Display this when no race is active
                 androidx.compose.foundation.layout.Column(
                     modifier = Modifier.align(androidx.compose.ui.Alignment.Center),

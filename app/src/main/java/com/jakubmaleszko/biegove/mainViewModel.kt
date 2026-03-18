@@ -7,9 +7,12 @@ import com.jakubmaleszko.biegove.db.AppDatabase
 import com.jakubmaleszko.biegove.db.entities.Race
 import com.jakubmaleszko.biegove.db.entities.Settings
 import com.jakubmaleszko.biegove.db.entities.Timestamp
+import com.jakubmaleszko.biegove.db.mmkv.SettingsManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -17,13 +20,17 @@ import kotlinx.coroutines.launch
 
 class BiegoveViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getInstance(application)
-    private val settingsDao = db.settingsDao()
     private val raceDao = db.raceDao()
     private val timestampDao = db.timestampDao()
     // 1. SETTINGS & SELECTION
-    val settingsState: StateFlow<Settings?> = settingsDao.observeSettings()
-        .map { it ?: Settings() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    private val _settingsState = MutableStateFlow(
+        Settings(
+            themeMode = SettingsManager.themeMode,
+            useDraw = SettingsManager.useDraw,
+            selectedRace = SettingsManager.selectedRace
+        )
+    )
+    val settingsState: StateFlow<Settings> = _settingsState.asStateFlow()
 
     val selectedRaceObject: StateFlow<Race?> = settingsState
         .map { settings -> settings?.selectedRace?.let { raceDao.getById(it) } }
@@ -93,37 +100,31 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // --- SETTINGS ---
+    fun updateTheme(mode: Int) {
+        SettingsManager.themeMode = mode
+        _settingsState.value = _settingsState.value.copy(themeMode = mode)
+    }
+
     fun selectRace(raceId: Int) {
-        viewModelScope.launch {
-            val current = settingsDao.getSettings() ?: Settings()
-            settingsDao.insertSettings(current.copy(selectedRace = raceId))
-        }
+        SettingsManager.selectedRace = raceId
+        _settingsState.value = _settingsState.value.copy(selectedRace = raceId)
     }
 
     fun toggleDraw(enabled: Boolean) {
-        viewModelScope.launch {
-            val current = settingsDao.getSettings() ?: Settings()
-            settingsDao.insertSettings(current.copy(useDraw = enabled))
-        }
-    }
-
-    fun updateTheme(mode: Int) {
-        viewModelScope.launch {
-            val current = settingsDao.getSettings() ?: Settings()
-            settingsDao.insertSettings(current.copy(themeMode = mode))
-        }
+        SettingsManager.useDraw = enabled
+        _settingsState.value = _settingsState.value.copy(useDraw = enabled)
     }
 
     fun removeRace(race: Race){
         viewModelScope.launch {
-            settingsDao.updateSelectedRace(-1)
+            selectRace(-1)
             raceDao.delete(race)
         }
     }
 
     fun clearAllRaces() {
         viewModelScope.launch {
-            settingsDao.updateSelectedRace(-1)
+            selectRace(-1)
             raceDao.deleteAll()
         }
     }
