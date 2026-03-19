@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import com.jakubmaleszko.biegove.BiegoveViewModel
 import com.jakubmaleszko.biegove.R
 import com.jakubmaleszko.biegove.db.entities.Timestamp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 enum class SortType { NUMBER, TIME }
 enum class SortOrder { ASC, DESC }
@@ -28,11 +30,11 @@ fun formatDuration(seconds: Int): String {
 @Composable
 fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     val results by viewModel.currentRaceResults.collectAsState()
     val selectedRace by viewModel.selectedRaceObject.collectAsState()
 
-    // UI State for Search and Sort
     var searchQuery by remember { mutableStateOf("") }
     var sortType by remember { mutableStateOf(SortType.TIME) }
     var sortOrder by remember { mutableStateOf(SortOrder.DESC) }
@@ -71,13 +73,10 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
 
-            // --- SEARCH AND SORT SECTION ---
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { input ->
-                        searchQuery = input.filter { it.isDigit() }
-                    },
+                    onValueChange = { input -> searchQuery = input.filter { it.isDigit() } },
                     label = { Text("Search by Number") },
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = { Icon(painter = painterResource(R.drawable.search), contentDescription = null) },
@@ -89,7 +88,6 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                     modifier = Modifier.padding(top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Number Sort Chip
                     FilterChip(
                         selected = sortType == SortType.NUMBER,
                         onClick = {
@@ -103,7 +101,6 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                         label = { Text("Number ${if (sortType == SortType.NUMBER) (if (sortOrder == SortOrder.ASC) "↑" else "↓") else ""}") }
                     )
 
-                    // Time Sort Chip
                     FilterChip(
                         selected = sortType == SortType.TIME,
                         onClick = {
@@ -129,12 +126,18 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                         textAlign = TextAlign.Center
                     )
                 } else {
-                    LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(
                             items = displayedResults,
                             key = { it.id }
                         ) { result ->
-                            ResultItem(result)
+                            ResultItem(
+                                result = result,
+                                viewModel = viewModel,
+                                snackbarHostState = snackbarHostState,
+                                scope = scope,
+                                modifier = Modifier.animateItem()
+                            )
                         }
                     }
                 }
@@ -144,9 +147,15 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
 }
 
 @Composable
-fun ResultItem(result: Timestamp) {
+fun ResultItem(
+    result: Timestamp,
+    viewModel: BiegoveViewModel,
+    snackbarHostState: SnackbarHostState,
+    scope: CoroutineScope,
+    modifier: Modifier = Modifier
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface
     ) {
         Column {
@@ -156,7 +165,22 @@ fun ResultItem(result: Timestamp) {
             ) {
                 Text("#${result.number}", modifier = Modifier.weight(0.3f))
                 Text(formatDuration(result.time), modifier = Modifier.weight(0.6f))
-                IconButton(onClick = { /* Delete Logic */ }) {
+                IconButton(onClick = {
+                    scope.launch {
+                        viewModel.removeTimestamp(result)
+
+                        val snackResult = snackbarHostState.showSnackbar(
+                            message = "Runner #${result.number} removed",
+                            actionLabel = "Undo",
+                            duration = SnackbarDuration.Short
+                        )
+
+                        if (snackResult == SnackbarResult.ActionPerformed) {
+                            // Ensure your ViewModel has a method to re-insert the specific object
+                            viewModel.insertResultToSelectedRace(result)
+                        }
+                    }
+                }) {
                     Icon(painterResource(R.drawable.delete), "Delete", tint = MaterialTheme.colorScheme.error)
                 }
             }
