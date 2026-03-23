@@ -67,11 +67,13 @@ object ConnectionManager {
         }
     }
 
-    fun syncData(startTime: Long, entries: List<Pair<Int, Int>>) {
+    fun syncData(raceName: String, startTime: Long, entries: List<Pair<Int, Int>>) {
         val device = _connectedDevice.value ?: return
         scope.launch {
             try {
                 val json = JSONObject()
+                // Added the race name here
+                json.put("name", raceName)
                 json.put("startTime", startTime)
 
                 val arr = JSONArray()
@@ -82,8 +84,11 @@ object ConnectionManager {
                     arr.put(obj)
                 }
                 json.put("entries", arr)
+
                 post("http://${device.address}/sync", json.toString())
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                Log.e("SYNC", "Failed to sync: ${e.message}")
+            }
         }
     }
 

@@ -49,6 +49,17 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
     val allRaces: StateFlow<List<Race>> = raceDao.observeRaces()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    init {
+        viewModelScope.launch {
+            currentRaceResults.collect { results ->
+                val race = selectedRaceObject.value
+                if (race != null && ConnectionManager.isConnected.value) {
+                    ConnectionManager.syncData(race.name,race.startTime, results.map { it.number to it.time })
+                }
+            }
+        }
+    }
+
     // --- RACE OPERATIONS ---
     fun addNewRace(name: String, startTime: Long) {
         viewModelScope.launch {
@@ -61,16 +72,6 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // --- RESULT OPERATIONS ---
-    private fun triggerAutoSync() {
-        val race = selectedRaceObject.value ?: return
-        val results = currentRaceResults.value
-        if (ConnectionManager.isConnected.value) {
-            ConnectionManager.syncData(
-                race.startTime,
-                results.map { it.number to it.time }
-            )
-        }
-    }
     fun addResultToSelectedRace(runnerNumber: Int) {
         val currentRace = selectedRaceObject.value ?: return
         viewModelScope.launch {
@@ -82,7 +83,6 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
                 time = elapsedSeconds
             )
             timestampDao.insert(newResult)
-            triggerAutoSync()
         }
     }
     fun insertResultToSelectedRace(timestamp: Timestamp) {
