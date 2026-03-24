@@ -5,6 +5,8 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
+import com.jakubmaleszko.biegove.db.entities.Race
 import com.jakubmaleszko.biegove.db.entities.Timestamp
 import kotlinx.coroutines.flow.Flow
 @Dao
@@ -16,9 +18,8 @@ interface TimestampDao {
     @Query("SELECT * FROM Timestamp")
     suspend fun getAll(): List<Timestamp>
 
-    // --- RACE SPECIFIC QUERIES ---
-
-    // This is the one your TablePage should use
+    @Update
+    suspend fun update(timestamp: Timestamp)
     @Query("SELECT * FROM Timestamp WHERE raceId = :raceId ORDER BY time ASC")
     fun observeByRace(raceId: Int): Flow<List<Timestamp>>
 

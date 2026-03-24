@@ -70,6 +70,11 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
             raceDao.insert(newRace)
         }
     }
+    fun updateRace(race: Race) {
+        viewModelScope.launch {
+            raceDao.update(race)
+        }
+    }
 
     // --- RESULT OPERATIONS ---
     fun addResultToSelectedRace(runnerNumber: Int) {
@@ -86,6 +91,13 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
         }
     }
     fun insertResultToSelectedRace(timestamp: Timestamp) {
+        val currentRace = selectedRaceObject.value ?: return
+
+        viewModelScope.launch {
+            timestampDao.update(timestamp)
+        }
+    }
+    fun updateTimestamp(timestamp: Timestamp) {
         val currentRace = selectedRaceObject.value ?: return
 
         viewModelScope.launch {

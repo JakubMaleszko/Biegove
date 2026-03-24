@@ -39,6 +39,9 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
     var sortType by remember { mutableStateOf(SortType.TIME) }
     var sortOrder by remember { mutableStateOf(SortOrder.DESC) }
 
+    // State for the Edit Dialog
+    var editingResult by remember { mutableStateOf<Timestamp?>(null) }
+
     val displayedResults = remember(results, searchQuery, sortType, sortOrder) {
         results
             .filter { it.number.toString().contains(searchQuery) }
@@ -49,6 +52,18 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                 }
                 if (sortOrder == SortOrder.ASC) comparison else -comparison
             }
+    }
+
+    // --- Edit Dialog Logic ---
+    editingResult?.let { result ->
+        EditResultDialog(
+            result = result,
+            onDismiss = { editingResult = null },
+            onConfirm = { updatedResult ->
+                viewModel.updateTimestamp(updatedResult)
+                editingResult = null
+            }
+        )
     }
 
     Scaffold(
@@ -136,6 +151,7 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                                 viewModel = viewModel,
                                 snackbarHostState = snackbarHostState,
                                 scope = scope,
+                                onEdit = { editingResult = result },
                                 modifier = Modifier.animateItem()
                             )
                         }
@@ -147,11 +163,76 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
 }
 
 @Composable
+fun EditResultDialog(
+    result: Timestamp,
+    onDismiss: () -> Unit,
+    onConfirm: (Timestamp) -> Unit
+) {
+    var number by remember { mutableStateOf(result.number.toString()) }
+    var minutes by remember { mutableStateOf((result.time / 60).toString()) }
+    var seconds by remember { mutableStateOf(String.format("%02d", result.time % 60)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Result") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                OutlinedTextField(
+                    value = number,
+                    onValueChange = { number = it.filter { c -> c.isDigit() } },
+                    label = { Text("Runner Number") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = minutes,
+                        onValueChange = { minutes = it.filter { c -> c.isDigit() } },
+                        label = { Text("Min") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    Text(":", style = MaterialTheme.typography.headlineMedium)
+                    OutlinedTextField(
+                        value = seconds,
+                        onValueChange = { input ->
+                            val filtered = input.filter { it.isDigit() }
+                            if (filtered.isEmpty() || filtered.toInt() < 60) {
+                                seconds = filtered
+                            }
+                        },
+                        label = { Text("Sec") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val totalSecs = (minutes.toIntOrNull() ?: 0) * 60 + (seconds.toIntOrNull() ?: 0)
+                val newNumber = number.toIntOrNull() ?: result.number
+                onConfirm(result.copy(number = newNumber, time = totalSecs))
+            }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
 fun ResultItem(
     result: Timestamp,
     viewModel: BiegoveViewModel,
     snackbarHostState: SnackbarHostState,
     scope: CoroutineScope,
+    onEdit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -160,23 +241,27 @@ fun ResultItem(
     ) {
         Column {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("#${result.number}", modifier = Modifier.weight(0.3f))
-                Text(formatDuration(result.time), modifier = Modifier.weight(0.6f))
+                Text("#${result.number}", modifier = Modifier.weight(0.3f), style = MaterialTheme.typography.titleMedium)
+                Text(formatDuration(result.time), modifier = Modifier.weight(0.4f), style = MaterialTheme.typography.bodyLarge)
+
+                // Edit Button
+                IconButton(onClick = onEdit) {
+                    Icon(painterResource(R.drawable.edit), "Edit", tint = MaterialTheme.colorScheme.primary)
+                }
+
+                // Delete Button
                 IconButton(onClick = {
                     scope.launch {
                         viewModel.removeTimestamp(result)
-
                         val snackResult = snackbarHostState.showSnackbar(
                             message = "Runner #${result.number} removed",
                             actionLabel = "Undo",
                             duration = SnackbarDuration.Short
                         )
-
                         if (snackResult == SnackbarResult.ActionPerformed) {
-                            // Ensure your ViewModel has a method to re-insert the specific object
                             viewModel.insertResultToSelectedRace(result)
                         }
                     }
