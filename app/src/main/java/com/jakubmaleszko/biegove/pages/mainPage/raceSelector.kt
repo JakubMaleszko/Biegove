@@ -41,11 +41,12 @@ fun RaceSelectorSheet(viewModel: BiegoveViewModel, onDismiss: () -> Unit) {
     var showAddSection by remember { mutableStateOf(false) }
     var editingRace by remember { mutableStateOf<com.jakubmaleszko.biegove.db.entities.Race?>(null) }
 
+    val currentTime = remember { LocalTime.now() }
     var newRaceName by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    var hour by remember { mutableStateOf("00") }
-    var minute by remember { mutableStateOf("00") }
-    var second by remember { mutableStateOf("00") }
+    var hour by remember { mutableStateOf(String.format("%02d", currentTime.hour)) }
+    var minute by remember { mutableStateOf(String.format("%02d", currentTime.minute)) }
+    var second by remember { mutableStateOf(String.format("%02d", currentTime.second)) }
 
     var showDatePicker by remember { mutableStateOf(false) }
     var raceToDelete by remember { mutableStateOf<com.jakubmaleszko.biegove.db.entities.Race?>(null) }
@@ -155,11 +156,11 @@ fun RaceSelectorSheet(viewModel: BiegoveViewModel, onDismiss: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        TimeField(value = hour, onValueChange = { hour = it }, label = "HH")
+                        TimeField(value = hour, onValueChange = { hour = it })
                         Text(":", style = MaterialTheme.typography.titleLarge)
-                        TimeField(value = minute, onValueChange = { minute = it }, label = "MM")
+                        TimeField(value = minute, onValueChange = { minute = it })
                         Text(":", style = MaterialTheme.typography.titleLarge)
-                        TimeField(value = second, onValueChange = { second = it }, label = "SS")
+                        TimeField(value = second, onValueChange = { second = it })
                     }
 
                     Button(
@@ -194,7 +195,7 @@ fun RaceSelectorSheet(viewModel: BiegoveViewModel, onDismiss: () -> Unit) {
 
         LazyColumn(modifier = Modifier.heightIn(max = 450.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(races, key = { it.uid }) { race ->
-                val isSelected = race.uid == settings?.selectedRace
+                val isSelected = race.uid == settings.selectedRace
                 RaceCard(
                     race = race,
                     isSelected = isSelected,
@@ -208,7 +209,7 @@ fun RaceSelectorSheet(viewModel: BiegoveViewModel, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun TimeField(value: String, onValueChange: (String) -> Unit, label: String) {
+fun TimeField(value: String, onValueChange: (String) -> Unit) {
     Surface(
         shape = MaterialTheme.shapes.small,
         tonalElevation = 2.dp,

@@ -142,16 +142,29 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                     )
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(
-                            items = displayedResults,
-                            key = { it.id }
-                        ) { result ->
+                        // Inside TablePage LazyColumn items
+                        items(items = displayedResults, key = { it.id }) { result ->
                             ResultItem(
                                 result = result,
-                                viewModel = viewModel,
-                                snackbarHostState = snackbarHostState,
-                                scope = scope,
                                 onEdit = { editingResult = result },
+                                onDelete = {
+                                    scope.launch {
+                                        // Perform deletion
+                                        viewModel.removeTimestamp(result)
+
+                                        // Show snackbar from the Page scope, not the Item scope
+                                        val snackResult = snackbarHostState.showSnackbar(
+                                            message = "Runner #${result.number} removed",
+                                            actionLabel = "Undo",
+                                            duration = SnackbarDuration.Short
+                                        )
+
+                                        if (snackResult == SnackbarResult.ActionPerformed) {
+                                            // Re-insert the exact object
+                                            viewModel.insertResultToSelectedRace(result)
+                                        }
+                                    }
+                                },
                                 modifier = Modifier.animateItem()
                             )
                         }
@@ -229,12 +242,10 @@ fun EditResultDialog(
 @Composable
 fun ResultItem(
     result: Timestamp,
-    viewModel: BiegoveViewModel,
-    snackbarHostState: SnackbarHostState,
-    scope: CoroutineScope,
+    onDelete: () -> Unit, // Change this
     onEdit: () -> Unit,
     modifier: Modifier = Modifier
-) {
+){
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface
@@ -253,19 +264,7 @@ fun ResultItem(
                 }
 
                 // Delete Button
-                IconButton(onClick = {
-                    scope.launch {
-                        viewModel.removeTimestamp(result)
-                        val snackResult = snackbarHostState.showSnackbar(
-                            message = "Runner #${result.number} removed",
-                            actionLabel = "Undo",
-                            duration = SnackbarDuration.Short
-                        )
-                        if (snackResult == SnackbarResult.ActionPerformed) {
-                            viewModel.insertResultToSelectedRace(result)
-                        }
-                    }
-                }) {
+                IconButton(onClick = onDelete) {
                     Icon(painterResource(R.drawable.delete), "Delete", tint = MaterialTheme.colorScheme.error)
                 }
             }

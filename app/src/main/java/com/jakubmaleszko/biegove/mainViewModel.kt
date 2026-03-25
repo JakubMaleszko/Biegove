@@ -94,14 +94,14 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
         val currentRace = selectedRaceObject.value ?: return
 
         viewModelScope.launch {
-            timestampDao.update(timestamp)
+            timestampDao.insert(timestamp)
         }
     }
     fun updateTimestamp(timestamp: Timestamp) {
         val currentRace = selectedRaceObject.value ?: return
 
         viewModelScope.launch {
-            timestampDao.insert(timestamp)
+            timestampDao.update(timestamp)
         }
     }
 
