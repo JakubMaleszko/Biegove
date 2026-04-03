@@ -26,6 +26,9 @@ interface TimestampDao {
     @Query("SELECT * FROM Timestamp WHERE raceId = :raceId ORDER BY time ASC")
     suspend fun getByRace(raceId: Int): List<Timestamp>
 
+    @Query("SELECT COUNT(*) FROM Timestamp WHERE raceId = :raceId")
+    fun observeCountByRace(raceId: Int): Flow<Int>
+
     // --- GENERAL OPERATIONS ---
 
     @Query("SELECT * FROM Timestamp WHERE id = :id LIMIT 1")

@@ -49,6 +49,18 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
     val allRaces: StateFlow<List<Race>> = raceDao.observeRaces()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val racesWithCounts: StateFlow<List<Pair<Race, Int>>> = allRaces
+        .flatMapLatest { races ->
+            // For every race, we observe its specific timestamp count
+            val countFlows = races.map { race ->
+                timestampDao.observeByRace(race.uid).map { list -> race to list.size }
+            }
+            if (countFlows.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList())
+            else kotlinx.coroutines.flow.combine(countFlows) { it.toList() }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     init {
         viewModelScope.launch {
             currentRaceResults.collect { results ->

@@ -37,6 +37,7 @@ fun formatUnixTimestamp(timestamp: Long): String {
 fun RaceSelectorSheet(viewModel: BiegoveViewModel, onDismiss: () -> Unit) {
     val races by viewModel.allRaces.collectAsState()
     val settings by viewModel.settingsState.collectAsState()
+    val racesWithCounts by viewModel.racesWithCounts.collectAsState()
 
     var showAddSection by remember { mutableStateOf(false) }
     var editingRace by remember { mutableStateOf<com.jakubmaleszko.biegove.db.entities.Race?>(null) }
@@ -47,6 +48,7 @@ fun RaceSelectorSheet(viewModel: BiegoveViewModel, onDismiss: () -> Unit) {
     var hour by remember { mutableStateOf(String.format("%02d", currentTime.hour)) }
     var minute by remember { mutableStateOf(String.format("%02d", currentTime.minute)) }
     var second by remember { mutableStateOf(String.format("%02d", currentTime.second)) }
+
 
     var showDatePicker by remember { mutableStateOf(false) }
     var raceToDelete by remember { mutableStateOf<com.jakubmaleszko.biegove.db.entities.Race?>(null) }
@@ -194,11 +196,11 @@ fun RaceSelectorSheet(viewModel: BiegoveViewModel, onDismiss: () -> Unit) {
         Spacer(modifier = Modifier.height(8.dp))
 
         LazyColumn(modifier = Modifier.heightIn(max = 450.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(races, key = { it.uid }) { race ->
-                val isSelected = race.uid == settings.selectedRace
+            items(racesWithCounts, key = { it.first.uid }) { (race, count) ->
                 RaceCard(
                     race = race,
-                    isSelected = isSelected,
+                    entryCount = count,
+                    isSelected = race.uid == settings.selectedRace,
                     onSelect = { viewModel.selectRace(race.uid) },
                     onDelete = { raceToDelete = race },
                     onEdit = { startEditing(race) }
@@ -242,9 +244,10 @@ fun TimeField(value: String, onValueChange: (String) -> Unit) {
 fun RaceCard(
     race: com.jakubmaleszko.biegove.db.entities.Race,
     isSelected: Boolean,
+    entryCount: Int, // New parameter
     onSelect: () -> Unit,
     onDelete: () -> Unit,
-    onEdit: () -> Unit // Added this
+    onEdit: () -> Unit
 ) {
     val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
     val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
@@ -256,20 +259,47 @@ fun RaceCard(
         border = androidx.compose.foundation.BorderStroke(2.dp, borderColor),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = race.name, style = MaterialTheme.typography.titleMedium)
-                Text(text = formatUnixTimestamp(race.startTime), style = MaterialTheme.typography.bodySmall)
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = formatUnixTimestamp(race.startTime),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    // Entry Count Badge
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = MaterialTheme.shapes.extraSmall
+                    ) {
+                        Text(
+                            text = "$entryCount entries",
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
             }
 
-            if (isSelected) Icon(painterResource(R.drawable.check), "Selected", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 4.dp))
+            if (isSelected) {
+                Icon(
+                    painterResource(R.drawable.check),
+                    "Selected",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
 
-            // Edit Button
             IconButton(onClick = onEdit) {
                 Icon(painterResource(R.drawable.edit), "Edit", tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
             }
 
-            // Delete Button
             IconButton(onClick = onDelete) {
                 Icon(painterResource(R.drawable.delete), "Delete", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
             }
