@@ -3,6 +3,7 @@ package com.jakubmaleszko.biegove.pages.mainPage
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -37,26 +38,42 @@ fun KbMainPage(
     viewModel: BiegoveViewModel
 ) {
     var number by remember { mutableStateOf("") }
-    val focusRequester = remember { FocusRequester() }
+    var note by remember { mutableStateOf("") }
+
+    val numberFocusRequester = remember { FocusRequester() }
+    val noteFocusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
 
     // Centralized save function
-    suspend fun saveTimestamp(targetId: Int?) {
-        if (targetId == null) return
+    suspend fun handleSave() {
+        val num = number.toIntOrNull()
+        val noteText = note.trim().ifBlank { null }
 
-        viewModel.addResultToSelectedRace(targetId)
-        number = ""
-        snackbarHostState.showSnackbar("Added ID: $targetId")
+        // Valid if at least one field is provided
+        if (num != null || noteText != null) {
+            viewModel.addResultToSelectedRace(num, noteText)
+
+            val message = when {
+                num != null && noteText != null -> "Added #$num with note"
+                num != null -> "Added #$num"
+                else -> "Added note: $noteText"
+            }
+
+            number = ""
+            note = ""
+            snackbarHostState.showSnackbar(message)
+        }
     }
 
     Column(
         modifier = Modifier
             .padding(innerPadding)
             .fillMaxWidth()
-            .padding(top = 40.dp, start = 24.dp, end = 24.dp), // Moved lower down
+            .padding(top = 40.dp, start = 24.dp, end = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // 1. Runner Number Input
         OutlinedTextField(
             value = number,
             onValueChange = { input -> number = input.filter { it.isDigit() } },
@@ -67,28 +84,56 @@ fun KbMainPage(
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .focusRequester(focusRequester),
+                .focusRequester(numberFocusRequester),
             keyboardActions = KeyboardActions(onDone = {
-                scope.launch { saveTimestamp(number.toIntOrNull()) }
-            })
+                scope.launch { handleSave() }
+            }),
+            singleLine = true
         )
 
-        Button(
-            onClick = { scope.launch { saveTimestamp(number.toIntOrNull()) } },
+        // 2. Note / Description Input
+        OutlinedTextField(
+            value = note,
+            onValueChange = { note = it },
+            label = { Text("Note") },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done
+            ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .focusRequester(noteFocusRequester),
+            keyboardActions = KeyboardActions(onDone = {
+                scope.launch { handleSave() }
+            }),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 3. Primary Add Button
+        Button(
+            onClick = { scope.launch { handleSave() } },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            // Enabled if either field has content
+            enabled = number.isNotBlank() || note.isNotBlank()
         ) {
-            Text("Add Runner")
+            Text("Add Result")
         }
 
+        // 4. Quick "Unknown" Button
         OutlinedButton(
-            onClick = { scope.launch { saveTimestamp(999999) } },
+            onClick = {
+                viewModel.addResultToSelectedRace(999999, "Unknown")
+                scope.launch { snackbarHostState.showSnackbar("Added Unknown") }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
         ) {
-            Text("Add Unknown")
+            Text("Quick Unknown")
         }
     }
 }

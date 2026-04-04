@@ -74,17 +74,17 @@ fun SettingsPage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                             scope.launch {
                                 if (ConnectionManager.connect(device)) {
                                     val activeRace = viewModel.selectedRaceObject.value
-                                    val entries = viewModel.currentRaceResults.value
+                                    val results = viewModel.currentRaceResults.value
 
                                     if (activeRace != null) {
                                         ConnectionManager.syncData(
                                             raceName = activeRace.name,
                                             startTime = activeRace.startTime,
-                                            entries = entries.map { it.number to it.time }
+                                            data = results.map { Triple(it.number, it.time, it.note) }
                                         )
                                         snackbarHostState.showSnackbar("Connected and Synced: ${activeRace.name}")
                                     } else {
-                                        ConnectionManager.syncData("",0L, emptyList())
+                                        ConnectionManager.syncData("", 0L, emptyList<Triple<Int?, Int, String?>>())
                                         snackbarHostState.showSnackbar("Connected (No active race to sync)")
                                     }
                                 } else {

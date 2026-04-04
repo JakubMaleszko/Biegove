@@ -67,20 +67,28 @@ object ConnectionManager {
         }
     }
 
-    fun syncData(raceName: String, startTime: Long, entries: List<Pair<Int, Int>>) {
+    fun syncData(
+        raceName: String,
+        startTime: Long,
+        data: List<Triple<Int?, Int, String?>> // Must be Triple to have 3 components
+    ) {
         val device = _connectedDevice.value ?: return
         scope.launch {
             try {
                 val json = JSONObject()
-                // Added the race name here
                 json.put("name", raceName)
                 json.put("startTime", startTime)
 
                 val arr = JSONArray()
-                entries.forEach { (number, elapsedSeconds) ->
+                // This destructuring now works because Triple has component1, 2, and 3
+                data.forEach { (number, elapsedSeconds, note) ->
                     val obj = JSONObject()
-                    obj.put("number", number)
+
+                    // JSONObject.NULL ensures the key is sent to the PC even if empty
+                    obj.put("number", number ?: JSONObject.NULL)
                     obj.put("elapsed", elapsedSeconds)
+                    obj.put("note", note ?: JSONObject.NULL)
+
                     arr.put(obj)
                 }
                 json.put("entries", arr)

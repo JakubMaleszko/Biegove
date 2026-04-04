@@ -66,7 +66,12 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
             currentRaceResults.collect { results ->
                 val race = selectedRaceObject.value
                 if (race != null && ConnectionManager.isConnected.value) {
-                    ConnectionManager.syncData(race.name,race.startTime, results.map { it.number to it.time })
+                    // Change 'it.number to it.time' into a Triple
+                    ConnectionManager.syncData(
+                        raceName = race.name,
+                        startTime = race.startTime,
+                        data = results.map { Triple(it.number, it.time, it.note) }
+                    )
                 }
             }
         }
@@ -89,7 +94,7 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // --- RESULT OPERATIONS ---
-    fun addResultToSelectedRace(runnerNumber: Int) {
+    fun addResultToSelectedRace(runnerNumber: Int?, note: String? = null) {
         val currentRace = selectedRaceObject.value ?: return
         viewModelScope.launch {
             val now = System.currentTimeMillis()
@@ -97,7 +102,8 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
             val newResult = Timestamp(
                 raceId = currentRace.uid,
                 number = runnerNumber,
-                time = elapsedSeconds
+                time = elapsedSeconds,
+                note = note
             )
             timestampDao.insert(newResult)
         }

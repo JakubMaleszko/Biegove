@@ -3,6 +3,7 @@ package com.jakubmaleszko.biegove.pages
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,37 +39,22 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
     var searchQuery by remember { mutableStateOf("") }
     var sortType by remember { mutableStateOf(SortType.TIME) }
     var sortOrder by remember { mutableStateOf(SortOrder.ASC) }
-
     var editingResult by remember { mutableStateOf<Timestamp?>(null) }
 
-    // 1. Calculate Rank (Ordinal Number) based on finish time (Oldest to Newest)
-    val finishPositions = remember(results) {
-        results.asSequence() // Use sequence for better performance on large lists
-            .sortedBy { it.time }
-            .mapIndexed { index, timestamp -> timestamp.id to (index + 1) }
-            .toMap()
-    }
-
-    // Filtered results for display
+    // Filter and Sort the list
     val displayedResults = remember(results, searchQuery, sortType, sortOrder) {
-        results.filter { it.number.toString().contains(searchQuery) }
+        results.filter {
+            it.number?.toString()?.contains(searchQuery) == true ||
+                    it.note?.contains(searchQuery, ignoreCase = true) == true
+        }
             .sortedWith { a, b ->
-                val comp = if (sortType == SortType.NUMBER) a.number.compareTo(b.number)
-                else a.time.compareTo(b.time)
+                val comp = if (sortType == SortType.NUMBER) {
+                    (a.number ?: 0).compareTo(b.number ?: 0)
+                } else {
+                    a.time.compareTo(b.time)
+                }
                 if (sortOrder == SortOrder.ASC) comp else -comp
             }
-    }
-
-    // Dialog handling
-    editingResult?.let { result ->
-        EditResultDialog(
-            result = result,
-            onDismiss = { editingResult = null },
-            onConfirm = { updatedResult ->
-                viewModel.updateTimestamp(updatedResult)
-                editingResult = null
-            }
-        )
     }
 
     Scaffold(
@@ -100,15 +86,13 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
 
-            // Search and Filter Chips
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { input -> searchQuery = input.filter { it.isDigit() } },
-                    label = { Text("Search by Number") },
+                    onValueChange = { searchQuery = it }, // Allow text for note searching
+                    label = { Text("Search Number or Note") },
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = { Icon(painterResource(R.drawable.search), null) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
 
@@ -134,6 +118,8 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
 
             HorizontalDivider()
 
+            HorizontalDivider()
+
             Box(modifier = Modifier.weight(1f)) {
                 if (displayedResults.isEmpty()) {
                     Text(
@@ -143,20 +129,27 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                     )
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(items = displayedResults, key = { it.id }) { result ->
+                        itemsIndexed(items = displayedResults, key = { _, result -> result.id }) { index, result ->
                             ResultItem(
                                 result = result,
-                                ordinal = finishPositions[result.id] ?: 0,
+                                // This gives the number from the top of the CURRENT view (1, 2, 3...)
+                                ordinal = index + 1,
                                 onEdit = { editingResult = result },
                                 onDelete = {
                                     scope.launch {
-                                        viewModel.removeTimestamp(result)
+                                        // Save a copy before deleting for Undo
+                                        val itemToDelete = result
+                                        viewModel.removeTimestamp(itemToDelete)
+
                                         val snackResult = snackbarHostState.showSnackbar(
-                                            message = "Runner #${result.number} removed",
-                                            actionLabel = "Undo"
+                                            message = "Removed #${itemToDelete.number ?: "Note"}",
+                                            actionLabel = "Undo",
+                                            duration = SnackbarDuration.Short
                                         )
+
                                         if (snackResult == SnackbarResult.ActionPerformed) {
-                                            viewModel.insertResultToSelectedRace(result)
+                                            // Re-insert the saved copy
+                                            viewModel.insertResultToSelectedRace(itemToDelete)
                                         }
                                     }
                                 },
@@ -176,7 +169,8 @@ fun EditResultDialog(
     onDismiss: () -> Unit,
     onConfirm: (Timestamp) -> Unit
 ) {
-    var number by remember { mutableStateOf(result.number.toString()) }
+    var number by remember { mutableStateOf(result.number?.toString() ?: "") }
+    var note by remember { mutableStateOf(result.note ?: "") } // Note field
     var minutes by remember { mutableStateOf((result.time / 60).toString()) }
     var seconds by remember { mutableStateOf(String.format("%02d", result.time % 60)) }
 
@@ -184,7 +178,7 @@ fun EditResultDialog(
         onDismissRequest = onDismiss,
         title = { Text("Edit Result") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = number,
                     onValueChange = { number = it.filter { c -> c.isDigit() } },
@@ -192,6 +186,14 @@ fun EditResultDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                OutlinedTextField( // New Note field in Edit
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("Note") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = minutes,
@@ -217,7 +219,11 @@ fun EditResultDialog(
         confirmButton = {
             Button(onClick = {
                 val totalSecs = (minutes.toIntOrNull() ?: 0) * 60 + (seconds.toIntOrNull() ?: 0)
-                onConfirm(result.copy(number = number.toIntOrNull() ?: result.number, time = totalSecs))
+                onConfirm(result.copy(
+                    number = number.toIntOrNull(),
+                    note = note.ifBlank { null },
+                    time = totalSecs
+                ))
             }) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
@@ -244,17 +250,32 @@ fun ResultItem(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.outline
                 )
-                Text(
-                    text = "#${result.number}",
-                    modifier = Modifier.weight(0.3f),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+
+                // Column to stack Number and Note
+                Column(modifier = Modifier.weight(0.4f)) {
+                    Text(
+                        text = result.number?.let { "#$it" } ?: "",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (!result.note.isNullOrBlank()) {
+                        Text(
+                            text = result.note,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
+
                 Text(
                     text = formatDuration(result.time),
-                    modifier = Modifier.weight(0.4f),
-                    style = MaterialTheme.typography.bodyLarge
+                    modifier = Modifier.weight(0.3f),
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.End
                 )
+
+                Spacer(Modifier.width(8.dp))
+
                 IconButton(onClick = onEdit) { Icon(painterResource(R.drawable.edit), null, tint = MaterialTheme.colorScheme.primary) }
                 IconButton(onClick = onDelete) { Icon(painterResource(R.drawable.delete), null, tint = MaterialTheme.colorScheme.error) }
             }
