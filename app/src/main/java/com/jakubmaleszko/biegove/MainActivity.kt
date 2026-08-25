@@ -21,7 +21,6 @@ class MainActivity : ComponentActivity() {
 
         MMKV.initialize(this)
 
-        enableEdgeToEdge()
         setContent {
             val viewModel: BiegoveViewModel = viewModel()
             val settings by viewModel.settingsState.collectAsState()

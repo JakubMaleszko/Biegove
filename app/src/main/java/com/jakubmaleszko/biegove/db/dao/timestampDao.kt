@@ -6,7 +6,6 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.jakubmaleszko.biegove.db.entities.Race
 import com.jakubmaleszko.biegove.db.entities.Timestamp
 import kotlinx.coroutines.flow.Flow
 @Dao
@@ -43,4 +42,7 @@ interface TimestampDao {
     // Useful if you want to clear results for just one race
     @Query("DELETE FROM Timestamp WHERE raceId = :raceId")
     suspend fun deleteByRace(raceId: Int)
+
+    @Query("UPDATE Timestamp SET time = time - :deltaSeconds WHERE raceId = :raceId")
+    suspend fun adjustTimesForRace(raceId: Int, deltaSeconds: Int)
 }

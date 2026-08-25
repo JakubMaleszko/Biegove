@@ -20,8 +20,6 @@ import com.jakubmaleszko.biegove.Device
 import com.jakubmaleszko.biegove.MdnsHelper
 import com.jakubmaleszko.biegove.R
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,11 +40,8 @@ fun SettingsPage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
     // MDNS Logic
     val mdns = remember { MdnsHelper(context) }
     LaunchedEffect(Unit) {
-        while (isActive) {
-            mdns.startDiscovery { device ->
-                if (devices.none { it.address == device.address }) devices.add(device)
-            }
-            delay(3000)
+        mdns.startDiscovery { device ->
+            if (devices.none { it.address == device.address }) devices.add(device)
         }
     }
     DisposableEffect(Unit) { onDispose { scope.launch(Dispatchers.IO) { mdns.stopDiscovery() } } }

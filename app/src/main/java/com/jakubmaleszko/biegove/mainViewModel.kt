@@ -52,9 +52,8 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
     @OptIn(ExperimentalCoroutinesApi::class)
     val racesWithCounts: StateFlow<List<Pair<Race, Int>>> = allRaces
         .flatMapLatest { races ->
-            // For every race, we observe its specific timestamp count
             val countFlows = races.map { race ->
-                timestampDao.observeByRace(race.uid).map { list -> race to list.size }
+                timestampDao.observeCountByRace(race.uid).map { count -> race to count }
             }
             if (countFlows.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList())
             else kotlinx.coroutines.flow.combine(countFlows) { it.toList() }
@@ -89,6 +88,13 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
     }
     fun updateRace(race: Race) {
         viewModelScope.launch {
+            val oldRace = raceDao.getById(race.uid)
+            if (oldRace != null) {
+                val deltaSeconds = ((race.startTime - oldRace.startTime) / 1000).toInt()
+                if (deltaSeconds != 0) {
+                    timestampDao.adjustTimesForRace(race.uid, deltaSeconds)
+                }
+            }
             raceDao.update(race)
         }
     }
@@ -155,6 +161,7 @@ class BiegoveViewModel(application: Application) : AndroidViewModel(application)
     fun clearAllRaces() {
         viewModelScope.launch {
             selectRace(-1)
+            timestampDao.deleteAll()
             raceDao.deleteAll()
         }
     }

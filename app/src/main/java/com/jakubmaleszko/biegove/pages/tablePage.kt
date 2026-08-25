@@ -17,15 +17,16 @@ import androidx.compose.ui.unit.dp
 import com.jakubmaleszko.biegove.BiegoveViewModel
 import com.jakubmaleszko.biegove.R
 import com.jakubmaleszko.biegove.db.entities.Timestamp
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 enum class SortType { NUMBER, TIME }
 enum class SortOrder { ASC, DESC }
 fun formatDuration(seconds: Int): String {
-    val mins = seconds / 60
+    val hours = seconds / 3600
+    val mins = (seconds % 3600) / 60
     val secs = seconds % 60
-    return String.format("%02d:%02d", mins, secs)
+    return if (hours > 0) String.format("%d:%02d:%02d", hours, mins, secs)
+    else String.format("%02d:%02d", mins, secs)
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +56,17 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                 }
                 if (sortOrder == SortOrder.ASC) comp else -comp
             }
+    }
+
+    editingResult?.let { result ->
+        EditResultDialog(
+            result = result,
+            onDismiss = { editingResult = null },
+            onConfirm = { updatedResult ->
+                viewModel.updateTimestamp(updatedResult)
+                editingResult = null
+            }
+        )
     }
 
     Scaffold(
@@ -115,8 +127,6 @@ fun TablePage(onBack: () -> Unit, viewModel: BiegoveViewModel) {
                     )
                 }
             }
-
-            HorizontalDivider()
 
             HorizontalDivider()
 
